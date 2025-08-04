@@ -51,11 +51,11 @@ def git_add_commit() -> bool:
 def git_push(branch_name: str) -> bool:
     return run_subprocess(["git", "push", "-u", "origin", branch_name], f"Error pushing branch {branch_name}")
 
-def create_github_pr(repository: str, branch_name: str, gh_token: str) -> bool:
+def create_github_pr(repository: str, branch_name: str, gh_token: str, pr_body: str) -> bool:
     pr_command: List[str] = [
         "gh", "pr", "create",
-        "--title", f"Add new action workflow for {repository}",
-        "--body", "This PR adds a new action workflow.",
+        "--title", f"barnacle:Security Automation Workflow",
+        "--body", pr_body,
         "--base", "main",
         "--head", branch_name,
         "--repo", f"rahulgauli/{repository}"
@@ -70,7 +70,7 @@ def cleanup_repository(repository: str) -> bool:
     return run_subprocess(["rm", "-rf", repository], f"Error cleaning up {repository}")
 
 
-async def create_pull_request(repository: str, action_template: str, gh_token: str):
+async def create_pull_request(repository: str, action_template: str, gh_token: str, pr_body: str):
     print(f"Creating pull request for repository: {repository}")
     if not clone_repository(repository):
         print("Skipping this repository due to cloning error.")
@@ -91,7 +91,7 @@ async def create_pull_request(repository: str, action_template: str, gh_token: s
     if not git_push(branch_name):
         cleanup_repository(repository)
         return
-    if not create_github_pr(repository, branch_name, gh_token):
+    if not create_github_pr(repository, branch_name, gh_token, pr_body):
         cleanup_repository(repository)
         return
     print(f"Pull request created successfully for {repository}")
@@ -105,12 +105,14 @@ if __name__ == "__main__":
             repositories = json.load(repo)
         with open("skeleton/new-action.yaml","r") as skeleton:
             action_template = skeleton.read()
-            print(type(action_template))
+        with open("skeleton/body.md", "r") as body_file:
+            pr_body = body_file.read()
         for a_repository in repositories:
             asyncio.run(create_pull_request(
                 repository=a_repository,
                 action_template=action_template,
-                gh_token=gh_token
+                gh_token=gh_token,
+                pr_body=pr_body
             ))
     except Exception as e:
         print(f"An error occurred: {e}")
